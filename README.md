@@ -101,7 +101,7 @@ Fully quit and reopen Claude Desktop for the new servers to load.
 ## 5. Try it
 
 ```
-Find flights from JFK to LHR on 2026-10-15, find hotels in London for the
+Find flights from JFK to Qatar on 2026-10-15, find hotels in Qatar for the
 same dates (checkout 2026-10-20), then email a summary of both to
 alex@example.com.
 ```

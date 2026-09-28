@@ -1,0 +1,31 @@
+{
+  "kill_switch": false,
+
+  "email": {
+    "allowed_recipient_domains": ["auxin.io"],
+    "allowed_recipients": ["dev@auxin.io"],
+    "max_emails_per_day": 10,
+    "max_subject_chars": 200,
+    "max_body_chars": 5000,
+    "allow_html": false,
+    "block_external_links": true,
+    "allowed_link_domains": ["google.com", "booking.com"],
+    "grounding_check": "block",
+    "disclosure_footer": "This message was drafted and sent by an AI agent on behalf of {user}."
+  },
+
+  "rate_limits": {
+    "booking_hotels": { "max_calls": 20, "per_seconds": 60 },
+    "flight_search": { "max_calls": 10, "per_seconds": 60 }
+  },
+
+  "egress_allowlist": ["rapidapi.com", "smtp.gmail.com"],
+
+  "controls": {
+    "injection_filter": true
+  },
+
+  "demo": {
+    "inject_malicious_hotel": true
+  }
+}

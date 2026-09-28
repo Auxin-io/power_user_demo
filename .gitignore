@@ -19,3 +19,14 @@ wheels/
 .idea/
 Thumbs.db
 .DS_Store
+
+# Agent guard runtime data (audit logs, rate-limit state, kill switch)
+logs/
+state/
+KILL_SWITCH
+
+# Local only: not pushed
+.mcp.json
+.claude/
+tests/
+scripts/

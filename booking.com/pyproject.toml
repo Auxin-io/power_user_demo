@@ -1,11 +1,12 @@
 [project]
 name = "booking-hotels"
 version = "0.1.0"
-description = "Add your description here"
-readme = "README.md"
+description = "MCP server: hotel search via RapidAPI Booking.com (read-only)"
 requires-python = ">=3.13"
+# [SC-24] Supply chain: only the packages this server uses, with major versions
+# pinned (mcp 2.x and fast-flights 3.x break this code); exact versions in uv.lock
 dependencies = [
-    "fast-flights>=2.2",
     "httpx>=0.28.1",
-    "mcp[cli]>=1.14.0",
+    "keyring>=25.0",
+    "mcp[cli]>=1.14.0,<2",
 ]

@@ -1,5 +1,10 @@
 # MCP Servers
 
+> **Security:** these servers run behind agentic security controls (approval
+> for sending email, recipient allowlist, injection filtering, audit log, kill
+> switch and more). See [SECURITY.md](SECURITY.md) for the control map, setup
+> and test plan. Secrets now live in the OS keychain, not in the config below.
+
 Three Model Context Protocol (MCP) servers for use with Claude Desktop:
 
 | Folder | Server name | Purpose |
@@ -26,32 +31,50 @@ uv --directory flight_search sync
 
 This creates `.venv/` in each folder with all required packages (`mcp`, `httpx`, `fast-flights`, etc.).
 
-## 2. Configure credentials
+## 2. Store credentials in the OS keychain
 
-### `booking_hotels`
+Secrets are **not** put in Claude's config file (it is plaintext and readable
+by any process running as you). The servers read them from Windows Credential
+Manager under the service name `power_user_demo` ([SC-12](SECURITY.md#security-control-table)).
 
-Requires two environment variables, set in Claude Desktop's config (see step 3):
+| Server | Secret | Value |
+|---|---|---|
+| `booking_hotels` | `RAPIDAPI_KEY` | Your key from [RapidAPI](https://rapidapi.com/) (search "Booking.com" API) |
+| `email_service` | `EMAIL_SENDER` | The Gmail address to send from |
+| `email_service` | `EMAIL_PASSWORD` | A [Gmail App Password](https://myaccount.google.com/apppasswords) (not your regular password) |
+| `flight_search` | — | No credentials required |
 
-- `RAPIDAPI_KEY` — your key from [RapidAPI](https://rapidapi.com/) (search "Booking.com" API)
-- `RAPIDAPI_HOST` (default `booking-com15.p.rapidapi.com`)
+Store them with a hidden prompt (nothing is echoed or logged):
 
-### `email_service`
+```powershell
+uv run --directory email_service python ../scripts/store_secrets.py
+```
 
-Requires two environment variables, set in Claude Desktop's config (see step 3):
+Environment variables with the same names still work as a fallback, but each
+use raises a `secret_from_env` security alert.
 
-- `EMAIL_SENDER` — the Gmail address to send from
-- `EMAIL_PASSWORD` — a [Gmail App Password](https://myaccount.google.com/apppasswords) (not your regular password)
+Optional, non-secret settings (set in `env` in step 3 if needed):
 
-Optional, if not using Gmail's default SSL settings:
-
-- `SMTP_SERVER` (default `smtp.gmail.com`)
+- `RAPIDAPI_HOST` (default `booking-com15.p.rapidapi.com`; must be on the egress allowlist)
+- `SMTP_SERVER` (default `smtp.gmail.com`; must be on the egress allowlist)
 - `SMTP_PORT` (default `465`, SSL)
 
-### `flight_search`
+## 3. Set the security policy
 
-No credentials required.
+Edit [`security_policy.json`](security_policy.json). At minimum, set who email
+may be sent to:
 
-## 3. Register the servers with Claude Desktop
+```json
+"allowed_recipient_domains": ["ncdhhs.gov"],
+"allowed_recipients": ["alex@example.com"]
+```
+
+Changes take effect on the next tool call; no restart needed. See
+[SECURITY.md](SECURITY.md) for every setting and the control it drives.
+
+## 4. Register the servers with Claude
+
+### Claude Desktop
 
 Open Claude Desktop's config file:
 
@@ -59,7 +82,9 @@ Open Claude Desktop's config file:
 %APPDATA%\Claude\claude_desktop_config.json
 ```
 
-Add the following inside `"mcpServers"` (adjust the path if this folder is located elsewhere), replacing `<...>` with your actual values:
+Add the following inside `"mcpServers"`, replacing `<path-to-this-folder>`
+with the full path to this folder (forward slashes). There is deliberately
+**no** `EMAIL_PASSWORD` or `RAPIDAPI_KEY` here:
 
 ```json
 {
@@ -70,7 +95,6 @@ Add the following inside `"mcpServers"` (adjust the path if this folder is locat
         "<path-to-this-folder>/booking.com/booking.py"
       ],
       "env": {
-        "RAPIDAPI_KEY": "<your-rapidapi-key>",
         "RAPIDAPI_HOST": "booking-com15.p.rapidapi.com"
       }
     },
@@ -78,11 +102,7 @@ Add the following inside `"mcpServers"` (adjust the path if this folder is locat
       "command": "<path-to-this-folder>/email_service/.venv/Scripts/python.exe",
       "args": [
         "<path-to-this-folder>/email_service/email_service.py"
-      ],
-      "env": {
-        "EMAIL_SENDER": "<your-gmail-address>",
-        "EMAIL_PASSWORD": "<your-gmail-app-password>"
-      }
+      ]
     },
     "flight_search": {
       "command": "<path-to-this-folder>/flight_search/.venv/Scripts/python.exe",
@@ -94,17 +114,33 @@ Add the following inside `"mcpServers"` (adjust the path if this folder is locat
 }
 ```
 
-## 4. Restart Claude Desktop
+Then, in Claude Desktop's connector settings, set **`send_email`** to
+**"Always ask"** so every email needs your approval ([SC-07](SECURITY.md#security-control-table)).
+Desktop does not run Claude Code hooks, so the server-side controls are its
+main protection.
 
-Fully quit and reopen Claude Desktop for the new servers to load.
+Fully quit and reopen Claude Desktop for the servers to load.
+
+### Claude Code
+
+Open this folder in Claude Code. The servers are already defined in
+[`.mcp.json`](.mcp.json) (no secrets), and [`.claude/settings.json`](.claude/settings.json)
+adds approval rules, deny rules and security hooks. Run `/mcp` and approve the
+three project servers the first time.
 
 ## 5. Try it
+
+Use a recipient that is on your allowlist (step 3):
 
 ```
 Find flights from JFK to Qatar on 2026-10-15, find hotels in Qatar for the
 same dates (checkout 2026-10-20), then email a summary of both to
 alex@example.com.
 ```
+
+The two searches run without prompting; Claude asks you to approve the email
+before it is sent. To see the controls block attacks, follow
+[How to test](SECURITY.md#how-to-test).
 
 This chains all three servers in one turn:
 
